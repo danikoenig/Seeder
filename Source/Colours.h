@@ -19,20 +19,18 @@ namespace SeedColours
     const juce::Colour knobTrack     { 0xff2c2f36 };
     const juce::Colour knobBody      { 0xff26282e };
 
-    // Layer-Farben: Chords, Melody, Arp, Bass (wie Slot A bis D)
-    const juce::Colour slotA         { 0xffff7a2f };   // Orange
-    const juce::Colour slotB         { 0xff4fc3f7 };   // Blau
-    const juce::Colour slotC         { 0xff69f0ae };   // Gruen
-    const juce::Colour slotD         { 0xffb388ff };   // Violett
-
+    // Layer-Farben: Chords, Stabs, Pad, Bass, Melody, Counter, Arp
     inline juce::Colour slot (int i)
     {
         switch (i)
         {
-            case 0:  return slotA;
-            case 1:  return slotB;
-            case 2:  return slotC;
-            default: return slotD;
+            case 0:  return juce::Colour (0xffff7a2f);   // Chords  Orange
+            case 1:  return juce::Colour (0xffffd54f);   // Stabs   Gelb
+            case 2:  return juce::Colour (0xff9fa8da);   // Pad     Lavendel
+            case 3:  return juce::Colour (0xffb388ff);   // Bass    Violett
+            case 4:  return juce::Colour (0xff4fc3f7);   // Melody  Blau
+            case 5:  return juce::Colour (0xfff48fb1);   // Counter Rosa
+            default: return juce::Colour (0xff69f0ae);   // Arp     Gruen
         }
     }
 

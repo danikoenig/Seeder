@@ -2,11 +2,11 @@
 
 namespace seeder
 {
-namespace { constexpr uint32_t kMagic = 0x5EED0001u; }
+namespace { constexpr uint32_t kMagic = 0x5EED0002u; }
 
 juce::File LinkHub::defaultFile()
 {
-    return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("seeder-link-v1.bin");
+    return juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("seeder-link-v2.bin");
 }
 
 LinkHub::LinkHub (const juce::File& file)
@@ -124,6 +124,7 @@ void LinkHub::publishTrigger (int group, uint32_t myId, const LinkTrigger& t)
     g->tStyle.store (t.style);
     g->tComplexity.store (t.complexity);
     g->tDensity.store (t.density);
+    g->tOptions.store (t.options);
     g->tSeedLo.store ((uint32_t) (t.seed & 0xffffffffULL));
     g->tSeedHi.store ((uint32_t) (t.seed >> 32));
     g->trigAuthor.store (myId);
@@ -142,6 +143,7 @@ bool LinkHub::readTrigger (int group, uint32_t myId, uint32_t& lastSeq, LinkTrig
     t.style      = g->tStyle.load();
     t.complexity = g->tComplexity.load();
     t.density    = g->tDensity.load();
+    t.options    = g->tOptions.load();
     t.seed       = ((uint64_t) g->tSeedHi.load() << 32) | (uint64_t) g->tSeedLo.load();
     const uint32_t author = g->trigAuthor.load();
     if (g->trigSeq.load() != s1) return false;     // torn read, try again next block

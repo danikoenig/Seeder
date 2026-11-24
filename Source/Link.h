@@ -11,7 +11,7 @@
 namespace seeder
 {
 constexpr int kLinkGroups = 4;
-constexpr int kLinkParams = 10;   // mood, style, mode, quant, complexity, density, swing, variation, seed, latch
+constexpr int kLinkParams = 12;   // mood, style, mode, quant, complexity, density, swing, variation, seed, latch, options (packed), humanize
 constexpr int kLinkSlots  = 8;
 
 struct LinkTrigger
@@ -20,6 +20,7 @@ struct LinkTrigger
     uint64_t seed = 0;
     int32_t  mood = 0, style = 0;
     int32_t  complexity = 0, density = 0;   // x1000
+    int32_t  options = 0;         // Options::pack()
 };
 
 struct LinkGroup
@@ -28,7 +29,7 @@ struct LinkGroup
     std::atomic<int32_t>  params[kLinkParams];
 
     std::atomic<uint32_t> trigSeq, trigAuthor;     // trigSeq: odd while being written
-    std::atomic<int32_t>  tNote, tMood, tStyle, tComplexity, tDensity;
+    std::atomic<int32_t>  tNote, tMood, tStyle, tComplexity, tDensity, tOptions;
     std::atomic<uint32_t> tSeedLo, tSeedHi;
 
     std::atomic<uint32_t> hbId[kLinkSlots], hbTime[kLinkSlots];

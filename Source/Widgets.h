@@ -67,7 +67,7 @@ private:
     juce::ParameterAttachment att;
 };
 
-// Mini piano roll of one layer over the 4 bars; the play position runs through it.
+// Mini piano roll of one layer over the whole phrase (4, 8 or 16 bars); the play position runs through it.
 class PatternView : public juce::Component
 {
 public:
@@ -76,6 +76,7 @@ public:
     void setPattern (const seeder::Pattern& pat)
     {
         events.clear();
+        steps = pat.steps();
         lo = 127; hi = 0;
         for (int i = 0; i < pat.count; ++i)
         {
@@ -98,9 +99,9 @@ public:
         g.setColour (inset);
         g.fillRoundedRectangle (r, 6.0f);
         auto inner = r.reduced (6.0f, 6.0f);
-        const float sw = inner.getWidth() / (float) seeder::kPatternSteps;
+        const float sw = inner.getWidth() / (float) steps;
 
-        for (int b = 0; b < seeder::kPatternSteps; b += 4)
+        for (int b = 0; b < steps; b += 4)
         {
             const bool bar = b % 16 == 0;
             g.setColour (bar ? textDim.withAlpha (0.35f) : cardBorder.withAlpha (0.8f));
@@ -140,6 +141,7 @@ private:
     int layer;
     std::vector<seeder::NoteEvent> events;
     int lo = 127, hi = 0;
+    int steps = 8 * seeder::kStepsPerBar;
 };
 
 // Drag handle: dragging it out of the plug-in drops a .mid file into the DAW

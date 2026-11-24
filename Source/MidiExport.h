@@ -6,11 +6,11 @@ namespace seeder
 {
 inline const char* layerName (int l)
 {
-    static const char* n[] { "Chords", "Melody", "Arp", "Bass" };
+    static const char* n[] { "Chords", "Stabs", "Pad", "Bass", "Melody", "Counter", "Arp" };
     return n[juce::jlimit (0, kNumLayers - 1, l)];
 }
 
-// Writes the pattern as a standard MIDI file (4 bars, 4/4, 960 ticks per quarter).
+// Writes the pattern as a standard MIDI file (4, 8 or 16 bars, 4/4, 960 ticks per quarter).
 // layerMask: bit n = include layer n. One track per included layer, all on MIDI channel 1.
 inline bool writePatternMidi (const Pattern& p, int layerMask, double bpm, const juce::File& file)
 {
@@ -42,7 +42,7 @@ inline bool writePatternMidi (const Pattern& p, int layerMask, double bpm, const
             seq.addEvent (juce::MidiMessage::noteOff (1, (int) e.note), off);
             any = true;
         }
-        seq.addEvent (juce::MidiMessage::endOfTrack(), (double) kPatternSteps * ticksPerStep);
+        seq.addEvent (juce::MidiMessage::endOfTrack(), (double) p.steps() * ticksPerStep);
         seq.updateMatchedPairs();
         mf.addTrack (seq);
     }

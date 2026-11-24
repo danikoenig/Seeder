@@ -12,18 +12,19 @@ struct TriggerSnapshot
     uint64_t seed = 0;
     int mood = 0, style = 0;
     int complexity1000 = 500, density1000 = 500;
+    int opts = 0;               // seeder::Options::pack()
 
     bool samePattern (const TriggerSnapshot& o) const
     {
         return note == o.note && seed == o.seed && mood == o.mood && style == o.style
-            && complexity1000 == o.complexity1000 && density1000 == o.density1000;
+            && complexity1000 == o.complexity1000 && density1000 == o.density1000 && opts == o.opts;
     }
 };
 
 namespace ParamIDs
 {
-inline const char* layerOn (int l)      { static const char* n[] { "onChords", "onMelody", "onArp", "onBass" }; return n[l]; }
-inline const char* layerChannel (int l) { static const char* n[] { "chChords", "chMelody", "chArp", "chBass" }; return n[l]; }
+inline const char* layerOn (int l)      { static const char* n[] { "onChords", "onStabs", "onPad", "onBass", "onMelody", "onCounter", "onArp" }; return n[l]; }
+inline const char* layerChannel (int l) { static const char* n[] { "chChords", "chStabs", "chPad", "chBass", "chMelody", "chCounter", "chArp" }; return n[l]; }
 }
 
 class SeederProcessor : public juce::AudioProcessor, private juce::Timer
@@ -66,12 +67,12 @@ public:
 
     // read by the editor
     std::atomic<int>      uiRootNote { -1 };          // active or pending trigger note, -1 = idle
-    std::atomic<int>      uiStep { 0 };               // 0 .. kPatternSteps-1
+    std::atomic<int>      uiStep { 0 };               // 0 .. steps-1
     std::atomic<int>      uiLinked { 0 };             // linked instances in this group (including this one)
     std::atomic<double>   uiBpm { 120.0 };
     std::atomic<uint32_t> uiPatternVersion { 0 };     // changes whenever a new pattern starts
     std::atomic<uint64_t> uiSeed { 0 };
-    std::atomic<int>      uiMood { 0 }, uiStyle { 0 }, uiRootPc { 0 }, uiComplexity { 500 }, uiDensity { 500 };
+    std::atomic<int>      uiMood { 0 }, uiStyle { 0 }, uiRootPc { 0 }, uiComplexity { 500 }, uiDensity { 500 }, uiOpts { 0 };
 
     // Rebuilds the pattern that is playing (or played last). False if there is none yet.
     bool getUiPattern (seeder::Pattern& out) const;
@@ -90,6 +91,7 @@ private:
     void flushAll (juce::MidiBuffer& out, int offsetInBlock);
     void fireTrigger (int note, bool broadcast);
     void startPattern (const TriggerSnapshot&, int64_t stepNumber);
+    int  readOptions() const;
     void readShared (int32_t* v) const;
     void applyShared (const int32_t* v);
 

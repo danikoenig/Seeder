@@ -11,7 +11,7 @@ public:
     ~SeederEditor() override;
     void resized() override;
 
-    static constexpr int kBaseW = 1100, kBaseH = 662;
+    static constexpr int kBaseW = 1100, kBaseH = 782;
 
 private:
     class Panel;

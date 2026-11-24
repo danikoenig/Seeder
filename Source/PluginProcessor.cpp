@@ -29,7 +29,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SeederProcessor::createLayou
     p.push_back (std::make_unique<AudioParameterInt>   (ParameterID { "seed", 1 },       "Seed", 0, 999, 0));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "latch", 1 },      "Latch", true));
 
-    const char* names[kNumLayers] { "Chords", "Melody", "Arp", "Bass" };
+    const char* names[kNumLayers] { "Chords", "Stabs", "Pad", "Bass", "Melody", "Counter", "Arp" };
     for (int i = 0; i < kNumLayers; ++i)
     {
         p.push_back (std::make_unique<AudioParameterBool> (ParameterID { ParamIDs::layerOn (i), 1 }, String (names[i]) + " On", true));
@@ -38,9 +38,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout SeederProcessor::createLayou
         p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { ParamIDs::layerChannel (i), 1 }, String (names[i]) + " Channel", chans, i));
     }
 
+    // Phrase options (shape the pattern, shared through the link)
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "bars", 1 }, "Bars",
+                 StringArray { "4 BARS", "8 BARS", "16 BARS" }, 1));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "voicing", 1 }, "Voicing",
+                 StringArray { "Auto", "Close", "Open", "Drop 2", "Spread" }, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "chordRate", 1 }, "Chord Change",
+                 StringArray { "Per Bar", "Per Half Bar", "Per 2 Bars" }, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "arpPattern", 1 }, "Arp Pattern",
+                 StringArray { "Auto", "Up", "Down", "Up / Down", "Random", "Converge" }, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "arpRate", 1 }, "Arp Rate",
+                 StringArray { "Auto", "1/8", "1/16" }, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "bassMove", 1 }, "Bass Move",
+                 StringArray { "Auto", "Root", "Octaves", "Walking" }, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "fill", 1 }, "Fill",
+                 StringArray { "Off", "Light", "Strong" }, 1));
+    p.push_back (std::make_unique<AudioParameterFloat>  (ParameterID { "humanize", 1 }, "Humanize", pct, 0.0f));
+
     // Instance link: with a role, an instance plays only that layer (on channel 1)
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "role", 1 }, "Role",
-                 StringArray { "All", "Chords", "Melody", "Arp", "Bass" }, 0));
+                 StringArray { "All", "Chords", "Stabs", "Pad", "Bass", "Melody", "Counter", "Arp" }, 0));
     p.push_back (std::make_unique<AudioParameterBool>   (ParameterID { "link", 1 }, "Link", true));
     p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "group", 1 }, "Link Group",
                  StringArray { "GROUP 1", "GROUP 2", "GROUP 3", "GROUP 4" }, 0));
@@ -111,6 +128,19 @@ void SeederProcessor::newSeed()
     regenRequested = true;
 }
 
+int SeederProcessor::readOptions() const
+{
+    Options o;
+    o.bars = (int) param ("bars");
+    o.voicing = (int) param ("voicing");
+    o.chordRate = (int) param ("chordRate");
+    o.arpPattern = (int) param ("arpPattern");
+    o.arpRate = (int) param ("arpRate");
+    o.bassMove = (int) param ("bassMove");
+    o.fill = (int) param ("fill");
+    return o.pack();
+}
+
 bool SeederProcessor::getUiPattern (Pattern& out) const
 {
     for (int attempt = 0; attempt < 3; ++attempt)
@@ -124,6 +154,7 @@ bool SeederProcessor::getUiPattern (Pattern& out) const
         p.style = (Style) uiStyle.load();
         p.complexity = (float) uiComplexity.load() / 1000.0f;
         p.density = (float) uiDensity.load() / 1000.0f;
+        p.options = Options::unpack (uiOpts.load());
         if (uiPatternVersion.load() != v) continue;
         generate (p, out);
         return true;
@@ -145,6 +176,8 @@ void SeederProcessor::readShared (int32_t* v) const
     v[7] = (int32_t) std::lround (param ("variation") * 1000.0f);
     v[8] = (int32_t) param ("seed");
     v[9] = param ("latch") > 0.5f ? 1 : 0;
+    v[10] = (int32_t) readOptions();
+    v[11] = (int32_t) std::lround (param ("humanize") * 1000.0f);
 }
 
 void SeederProcessor::applyShared (const int32_t* v)
@@ -164,6 +197,15 @@ void SeederProcessor::applyShared (const int32_t* v)
     set ("variation", (float) v[7] / 1000.0f);
     set ("seed", (float) v[8]);
     set ("latch", (float) v[9]);
+    const Options o = Options::unpack (v[10]);
+    set ("bars", (float) o.bars);
+    set ("voicing", (float) o.voicing);
+    set ("chordRate", (float) o.chordRate);
+    set ("arpPattern", (float) o.arpPattern);
+    set ("arpRate", (float) o.arpRate);
+    set ("bassMove", (float) o.bassMove);
+    set ("fill", (float) o.fill);
+    set ("humanize", (float) v[11] / 1000.0f);
 }
 
 void SeederProcessor::pollLink()
@@ -241,6 +283,7 @@ void SeederProcessor::fireTrigger (int note, bool broadcast)
     s.style = (int) param ("style");
     s.complexity1000 = (int) std::lround (param ("complexity") * 1000.0f);
     s.density1000 = (int) std::lround (param ("density") * 1000.0f);
+    s.opts = readOptions();
 
     const int userSeed = (int) param ("seed");
     switch ((int) param ("mode"))
@@ -257,7 +300,7 @@ void SeederProcessor::fireTrigger (int note, bool broadcast)
     {
         LinkTrigger t;
         t.note = s.note; t.seed = s.seed; t.mood = s.mood; t.style = s.style;
-        t.complexity = s.complexity1000; t.density = s.density1000;
+        t.complexity = s.complexity1000; t.density = s.density1000; t.options = s.opts;
         link.publishTrigger (group(), myId, t);
     }
 }
@@ -269,6 +312,7 @@ void SeederProcessor::startPattern (const TriggerSnapshot& s, int64_t stepNumber
     p.style      = (Style) s.style;
     p.complexity = (float) s.complexity1000 / 1000.0f;
     p.density    = (float) s.density1000 / 1000.0f;
+    p.options    = Options::unpack (s.opts);
     p.rootPc     = s.note % 12;
     p.seed       = s.seed;
 
@@ -282,7 +326,7 @@ void SeederProcessor::startPattern (const TriggerSnapshot& s, int64_t stepNumber
     uiSeed = p.seed;
     uiRootPc = p.rootPc;
     uiMood = s.mood; uiStyle = s.style;
-    uiComplexity = s.complexity1000; uiDensity = s.density1000;
+    uiComplexity = s.complexity1000; uiDensity = s.density1000; uiOpts = s.opts;
     uiPatternVersion.fetch_add (1);
 }
 
@@ -295,7 +339,8 @@ void SeederProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     juce::MidiBuffer out;
     const int64_t blockStart = sampleCounter;
     const bool latch = param ("latch") > 0.5f;
-    const int  role = (int) param ("role");           // 0 = all layers, 1..4 = one layer
+    const int  role = (int) param ("role");           // 0 = all layers, 1..7 = one layer
+    const float humanize = param ("humanize");
     const bool linked = linkOn() && joinedGroup.load() == group();
 
     // ---- transport -------------------------------------------------------------
@@ -347,7 +392,7 @@ void SeederProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             {
                 pendingSnap.note = t.note; pendingSnap.seed = t.seed;
                 pendingSnap.mood = t.mood; pendingSnap.style = t.style;
-                pendingSnap.complexity1000 = t.complexity; pendingSnap.density1000 = t.density;
+                pendingSnap.complexity1000 = t.complexity; pendingSnap.density1000 = t.density; pendingSnap.opts = t.options;
                 pendingNote = t.note;
                 if (activeNote < 0 && ! useHost) { internalPpq = 0.0; wasIdleStart = true; }
             }
@@ -451,8 +496,9 @@ void SeederProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
             int64_t rel = step - patternStart;
             if (rel < 0) { patternStart = step; rel = 0; loopsDone = 0; playPattern = basePattern; }
-            const int ps = (int) (rel % kPatternSteps);
-            const int64_t loop = rel / kPatternSteps;
+            const int patSteps = basePattern.steps();
+            const int ps = (int) (rel % patSteps);
+            const int64_t loop = rel / patSteps;
             if (ps == 0 && loop != loopsDone)
             {
                 applyVariation (basePattern, playPattern, genParams, variation, (int) loop);
@@ -467,13 +513,20 @@ void SeederProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
                 if (role != 0 && role - 1 != (int) e.layer) continue;   // this instance plays another layer
 
                 const int ch = role == 0 ? (int) param (ParamIDs::layerChannel (e.layer)) + 1 : 1;
-                const double startDelay = (step & 1) ? (double) swing * spStep : 0.0;
-                const double endDelay   = ((step + e.length) & 1) ? (double) swing * spStep : 0.0;
+                int vel = e.velocity;
+                double jitter = 0.0;
+                if (humanize > 0.0f)
+                {
+                    jitter = (double) randomSource.uni() * (double) humanize * 0.5 * spStep;
+                    vel = juce::jlimit (1, 127, vel + (int) std::lround ((randomSource.uni() - 0.5f) * humanize * 30.0f));
+                }
+                const double startDelay = ((step & 1) ? (double) swing * spStep : 0.0) + jitter;
+                const double endDelay   = (((step + e.length) & 1) ? (double) swing * spStep : 0.0) + jitter;
                 const int64_t onAt  = blockStart + offset + (int64_t) startDelay;
                 int64_t offAt = blockStart + offset + (int64_t) ((double) e.length * spStep + endDelay) - 2;
                 if (offAt <= onAt) offAt = onAt + 1;
 
-                schedule (onAt,  ch, e.note, e.velocity, true);
+                schedule (onAt,  ch, e.note, vel, true);
                 schedule (offAt, ch, e.note, 0, false);
             }
         }

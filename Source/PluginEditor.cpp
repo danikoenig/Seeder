@@ -11,16 +11,18 @@ constexpr int W = SeederEditor::kBaseW;
 constexpr int H = SeederEditor::kBaseH;
 constexpr int margin = 14;
 constexpr int cardsY = 56, cardsH = 196;
-constexpr int rowsY = 262, rowH = 90, rowGap = 8;
+constexpr int phraseY = 260, phraseH = 84;
+constexpr int rowsY = 352, rowH = 56, rowGap = 4;
 
 const juce::Colour triggerCol = accent;      // Orange
 const juce::Colour styleCol   = env;         // Gelb
 const juce::Colour shapeCol   = delayCol;    // Tuerkis
 const juce::Colour linkCol    = reverbCol;   // Lavendel
 const juce::Colour seedCol    = clip;        // Rot
+const juce::Colour phraseCol  = accent2;     // Amber
 
-const char* layerTitle[] { "CHORDS", "MELODY", "ARP", "BASS" };
-const char* layerHint[]  { "harmony", "lead line", "arpeggio", "bass line" };
+const char* layerTitle[] { "CHORDS", "STABS", "PAD", "BASS", "MELODY", "COUNTER", "ARP" };
+const char* layerHint[]  { "harmony", "short hits", "long chords", "bass line", "lead line", "answers the lead", "arpeggio" };
 
 void drawCard (juce::Graphics& g, juce::Rectangle<int> r, const juce::String& title, juce::Colour c)
 {
@@ -72,8 +74,8 @@ public:
         resetButton.onClick = [this] { proc.resetToInit(); };
         addAndMakeVisible (resetButton);
 
-        dragAll = std::make_unique<DragHandle> ("DRAG ALL", "4 TRACKS .MID", accent, [this] { return exportFile (0xF, "All"); });
-        dragAll->setTooltip ("Drag all four layers into your DAW as one MIDI file (one track per layer)");
+        dragAll = std::make_unique<DragHandle> ("DRAG ALL", "7 TRACKS .MID", accent, [this] { return exportFile ((1 << seeder::kNumLayers) - 1, "All"); });
+        dragAll->setTooltip ("Drag all seven layers into your DAW as one MIDI file (one track per layer)");
         addAndMakeVisible (*dragAll);
 
         // ---- trigger card ----
@@ -139,9 +141,40 @@ public:
         addAndMakeVisible (groupBox);
         groupAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, "group", groupBox);
 
-        roleSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter ("role"), juce::StringArray { "ALL", "CHD", "MEL", "ARP", "BAS" }, linkCol);
-        roleSwitch->setTooltip ("ALL: this instance plays all layers (on MIDI channels 1 to 4). Otherwise it plays only that layer, on MIDI channel 1.");
-        addAndMakeVisible (*roleSwitch);
+        roleBox.addItemList ({ "ALL LAYERS", "Chords", "Stabs", "Pad", "Bass", "Melody", "Counter", "Arp" }, 1);
+        roleBox.getProperties().set ("accent", linkCol.toString());
+        roleBox.setTooltip ("ALL LAYERS: this instance plays every layer, each on its own MIDI channel. Otherwise it plays only that layer, on MIDI channel 1.");
+        addAndMakeVisible (roleBox);
+        roleAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, "role", roleBox);
+
+        // ---- phrase card ----
+        barsSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter ("bars"), juce::StringArray { "4", "8", "16" }, phraseCol);
+        barsSwitch->setTooltip ("Length of the phrase in bars. 8 and 16 bars answer themselves: the second half repeats and varies the first.");
+        chordRateSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter ("chordRate"), juce::StringArray { "BAR", "1/2 BAR", "2 BARS" }, phraseCol);
+        chordRateSwitch->setTooltip ("How often the chord changes");
+        arpRateSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter ("arpRate"), juce::StringArray { "AUTO", "1/8", "1/16" }, phraseCol);
+        arpRateSwitch->setTooltip ("Speed of the arpeggio. AUTO follows the style.");
+        fillSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter ("fill"), juce::StringArray { "OFF", "LIGHT", "STRONG" }, phraseCol);
+        fillSwitch->setTooltip ("Turnaround in the last bar: bass run into the next loop, faster arp");
+        for (auto* c : { barsSwitch.get(), chordRateSwitch.get(), arpRateSwitch.get(), fillSwitch.get() }) addAndMakeVisible (*c);
+
+        auto setupCombo = [&] (juce::ComboBox& box, const char* id, const juce::String& tip, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>& att)
+        {
+            box.addItemList (static_cast<juce::AudioParameterChoice*> (a.getParameter (id))->choices, 1);
+            box.getProperties().set ("accent", phraseCol.toString());
+            box.setTooltip (tip);
+            addAndMakeVisible (box);
+            att = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, id, box);
+        };
+        setupCombo (voicingBox, "voicing", "Chord voicing: auto, close, open, drop 2 or spread", voicingAtt);
+        setupCombo (arpPatternBox, "arpPattern", "Order of the arpeggio notes", arpPatternAtt);
+        setupCombo (bassMoveBox, "bassMove", "Bass movement: auto, root only, octaves or walking", bassMoveAtt);
+
+        kHumanize.setup (*this, a, "humanize", "Humanize", phraseCol, true);
+        kHumanize.slider.setTooltip ("Random timing and velocity, so it plays less like a machine");
+        kHumanize.slider.textFromValueFunction = [] (double v) { return juce::String (juce::roundToInt (v * 100.0)) + "%"; };
+        kHumanize.slider.valueFromTextFunction = [] (const juce::String& t) { return t.getDoubleValue() / 100.0; };
+        kHumanize.slider.updateText();
 
         // ---- layer rows ----
         for (int l = 0; l < seeder::kNumLayers; ++l)
@@ -157,7 +190,7 @@ public:
             for (int c = 1; c <= 16; ++c) chans.add ("CH " + juce::String (c));
             r.out.addItemList (chans, 1);
             r.out.getProperties().set ("accent", col.toString());
-            r.out.setTooltip ("MIDI channel of this layer (when the role is ALL)");
+            r.out.setTooltip ("MIDI channel of this layer (when the role is ALL LAYERS)");
             addAndMakeVisible (r.out);
             r.outAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::layerChannel (l), r.out);
 
@@ -189,26 +222,27 @@ public:
         {
             const auto header = juce::Rectangle<int> (margin, 6, 400, 40);
             const float x0 = (float) header.getX() + 1.0f, base = (float) header.getY() + 30.0f;
-            const float hs[] { 0.55f, 1.0f, 0.4f, 0.75f };
+            const float hs[] { 0.55f, 0.85f, 0.4f, 0.75f, 1.0f, 0.65f, 0.5f };
             for (int c = 0; c < seeder::kNumLayers; ++c)
             {
                 g.setColour (slot (c));
                 const float h = 20.0f * hs[c];
-                g.fillRoundedRectangle (x0 + (float) c * 6.5f, base - h, 4.5f, h, 1.5f);
+                g.fillRoundedRectangle (x0 + (float) c * 5.5f, base - h, 3.6f, h, 1.3f);
             }
             g.setColour (text);
             g.setFont (juce::FontOptions (19.0f, juce::Font::bold));
-            g.drawText (JucePlugin_IsSynth ? "SEEDER INSTRUMENT" : "SEEDER", header.getX() + 34, header.getY() + 4, 300, 22, juce::Justification::centredLeft);
+            g.drawText (JucePlugin_IsSynth ? "SEEDER INSTRUMENT" : "SEEDER", header.getX() + 46, header.getY() + 4, 300, 22, juce::Justification::centredLeft);
             g.setColour (textDim);
             g.setFont (juce::FontOptions (11.0f));
             g.drawText (juce::String::fromUTF8 ("by Dani Koenig  \xc2\xb7  v") + JucePlugin_VersionString,
-                        header.getX() + 34, header.getY() + 24, 220, 14, juce::Justification::centredLeft);
+                        header.getX() + 46, header.getY() + 24, 220, 14, juce::Justification::centredLeft);
         }
 
         drawCard (g, secTrigger, "TRIGGER", triggerCol);
         drawCard (g, secStyle,   "STYLE",   styleCol);
         drawCard (g, secShape,   "SHAPE",   shapeCol);
         drawCard (g, secLink,    "LINK",    linkCol);
+        drawCard (g, secPhrase,  "PHRASE",  phraseCol);
 
         // ---- trigger card: root readout + 64-step position ----
         {
@@ -221,16 +255,26 @@ public:
             g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
             g.drawText (root >= 0 ? noteName (root) : juce::String ("-"), box.reduced (10, 0).withTrimmedTop (14).withWidth (70), juce::Justification::centredLeft);
 
+            const int nBars = seeder::Options::unpack (proc.uiOpts.load()).numBars();
             const int cur = root >= 0 ? proc.uiStep.load() : -1;
             const float x0 = (float) box.getX() + 84.0f, y0 = (float) box.getCentreY() + 2.0f;
-            const float w = ((float) box.getWidth() - 84.0f - 12.0f - 3.0f * 5.0f) / 64.0f;
-            for (int i = 0; i < seeder::kPatternSteps; ++i)
+            const float gap = 3.0f;
+            const float w = ((float) box.getWidth() - 84.0f - 12.0f - gap * (float) (nBars - 1)) / (float) nBars;
+            for (int b = 0; b < nBars; ++b)
             {
-                const float x = x0 + (float) i * w + (float) (i / 16) * 5.0f;
-                g.setColour (i == cur ? triggerCol : (i / 4 % 2 == 0 ? textDim.withAlpha (0.45f) : textDim.withAlpha (0.25f)));
-                g.fillRect (x, y0, juce::jmax (1.0f, w - 1.0f), 10.0f);
+                const float x = x0 + (float) b * (w + gap);
+                const bool now = cur >= 0 && cur / 16 == b;
+                g.setColour (now ? triggerCol.withAlpha (0.35f) : textDim.withAlpha (b % 2 == 0 ? 0.40f : 0.25f));
+                g.fillRoundedRectangle (x, y0, w, 10.0f, 2.0f);
+                if (now)
+                {
+                    g.setColour (triggerCol);
+                    g.fillRect (x + w * (float) (cur % 16) / 16.0f, y0 - 1.0f, juce::jmax (2.0f, w / 16.0f), 12.0f);
+                }
             }
-            smallLabel (g, "BAR 1      BAR 2      BAR 3      BAR 4", juce::Rectangle<int> ((int) x0, box.getY() + 6, box.getWidth() - 96, 12));
+            smallLabel (g, cur >= 0 ? "BAR " + juce::String (cur / 16 + 1) + " / " + juce::String (nBars)
+                                    : juce::String (nBars) + " BARS",
+                        juce::Rectangle<int> ((int) x0, box.getY() + 6, box.getWidth() - 96, 12));
         }
         smallLabel (g, "NOTE MODE", modeSwitch->getBounds().withX (secTrigger.getX() + 14).withWidth (70));
         smallLabel (g, "CHANGE AT", quantSwitch->getBounds().withX (secTrigger.getX() + 14).withWidth (70));
@@ -257,8 +301,14 @@ public:
                           juce::Rectangle<int> (secShape.getX() + 14, secShape.getBottom() - 38, secShape.getWidth() - 28, 30),
                           juce::Justification::centredLeft, 2, 1.0f);
 
+        // ---- phrase card labels ----
+        auto above = [&] (juce::Component& c, const char* t) { smallLabel (g, t, c.getBounds().withY (c.getY() - 13).withHeight (12)); };
+        above (*barsSwitch, "BARS");  above (*chordRateSwitch, "CHORD CHANGE");  above (voicingBox, "VOICING");
+        above (arpPatternBox, "ARP PATTERN");  above (*arpRateSwitch, "ARP RATE");  above (bassMoveBox, "BASS");
+        above (*fillSwitch, "FILL");
+
         // ---- link card ----
-        smallLabel (g, "ROLE OF THIS INSTANCE", roleSwitch->getBounds().withY (roleSwitch->getY() - 14).withHeight (12));
+        smallLabel (g, "ROLE OF THIS INSTANCE", roleBox.getBounds().withY (roleBox.getY() - 14).withHeight (12));
         {
             const int linked = proc.uiLinked.load();
             const bool on = proc.apvts.getRawParameterValue ("link")->load() > 0.5f;
@@ -287,18 +337,17 @@ public:
             g.setColour (on ? col : col.withAlpha (0.3f));
             g.fillRoundedRectangle ((float) r.getX(), (float) r.getY() + 10.0f, 4.0f, (float) r.getHeight() - 20.0f, 2.0f);
 
-            auto badge = juce::Rectangle<float> ((float) r.getX() + 24.0f, (float) r.getY() + 12.0f, 34.0f, 34.0f);
+            auto badge = juce::Rectangle<float> ((float) r.getX() + 20.0f, (float) r.getY() + 13.0f, 30.0f, 30.0f);
             g.setColour (col.withAlpha (on ? 0.22f : 0.1f));
             g.fillRoundedRectangle (badge, 7.0f);
             g.setColour (on ? col : col.withAlpha (0.5f));
-            g.setFont (juce::FontOptions (17.0f, juce::Font::bold));
+            g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
             g.drawText (juce::String (l + 1), badge.toNearestInt(), juce::Justification::centred);
 
             g.setColour (on ? text : textDim);
-            g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
-            g.drawText (layerTitle[l], r.getX() + 100, r.getY() + 14, 110, 20, juce::Justification::centredLeft);
-            smallLabel (g, layerHint[l], juce::Rectangle<int> (r.getX() + 100, r.getY() + 33, 110, 12));
-            smallLabel (g, "MIDI OUT", juce::Rectangle<int> (r.getX() + 100, r.getY() + 50, 110, 12));
+            g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+            g.drawText (layerTitle[l], r.getX() + 60, r.getY() + 8, 96, 20, juce::Justification::centredLeft);
+            smallLabel (g, layerHint[l], juce::Rectangle<int> (r.getX() + 60, r.getY() + 29, 100, 12));
         }
     }
 
@@ -310,6 +359,7 @@ public:
         dragAll->setBounds (W - margin - 92 * 2 - 8 - 8 - 118, 9, 118, 30);
 
         // cards
+        secPhrase = { margin, phraseY, W - 2 * margin, phraseH };
         const int total = W - 2 * margin, gap = 8;
         const int wTrig = 290, wStyle = 236, wLink = 206;
         const int wShape = total - wTrig - wStyle - wLink - 3 * gap;
@@ -338,17 +388,31 @@ public:
         const int lx = secLink.getX() + 14, lw = secLink.getWidth() - 28;
         linkButton.setBounds (lx, secLink.getY() + 36, 86, 26);
         groupBox.setBounds (lx + 92, secLink.getY() + 36, lw - 92, 26);
-        roleSwitch->setBounds (lx, secLink.getY() + 92, lw, 26);
+        roleBox.setBounds (lx, secLink.getY() + 92, lw, 26);
+
+        // phrase: switches and menus in one row, humanize knob on the right
+        {
+            const int px = secPhrase.getX() + 14, py = secPhrase.getY() + 44, ph = 26;
+            const int knobW = 92;
+            const int avail = secPhrase.getWidth() - 28 - knobW;
+            const int widths[] { 110, 150, 112, 130, 130, 100, 150 };
+            int sum = 0; for (int w : widths) sum += w;
+            const int gap = (avail - sum) / 6;
+            juce::Component* items[] { barsSwitch.get(), chordRateSwitch.get(), &voicingBox, &arpPatternBox, arpRateSwitch.get(), &bassMoveBox, fillSwitch.get() };
+            int x = px;
+            for (int i = 0; i < 7; ++i) { items[i]->setBounds (x, py, widths[i], ph); x += widths[i] + gap; }
+            kHumanize.setBounds (juce::Rectangle<int> (secPhrase.getRight() - 14 - knobW, secPhrase.getY() + 8, knobW, secPhrase.getHeight() - 14), 14);
+        }
 
         // rows
         for (int l = 0; l < seeder::kNumLayers; ++l)
         {
             auto& r = rows[(size_t) l];
             const auto a = rowArea (l);
-            r.on.setBounds (a.getX() + 14, a.getY() + 54, 66, 24);
-            r.out.setBounds (a.getX() + 100, a.getY() + 62, 98, 22);
-            r.drag->setBounds (a.getRight() - 12 - 92, a.getY() + 10, 92, a.getHeight() - 20);
-            r.view->setBounds (a.getX() + 222, a.getY() + 10, a.getWidth() - 222 - 12 - 92 - 10, a.getHeight() - 20);
+            r.on.setBounds (a.getX() + 176, a.getY() + 6, 60, 20);
+            r.out.setBounds (a.getX() + 176, a.getY() + 30, 76, 20);
+            r.drag->setBounds (a.getRight() - 10 - 100, a.getY() + 8, 100, a.getHeight() - 16);
+            r.view->setBounds (a.getX() + 264, a.getY() + 6, a.getWidth() - 264 - 10 - 100 - 8, a.getHeight() - 12);
         }
     }
 
@@ -395,7 +459,7 @@ private:
         repaint (secTrigger.expanded (2));
         repaint (secLink.expanded (2));
         repaint (secStyle.expanded (2));
-        for (int l = 0; l < seeder::kNumLayers; ++l) repaint (rowArea (l).removeFromLeft (220));
+        for (int l = 0; l < seeder::kNumLayers; ++l) repaint (rowArea (l).removeFromLeft (260));
     }
 
     SeederProcessor& proc;
@@ -415,7 +479,11 @@ private:
     // link
     juce::ToggleButton linkButton { "LINK" };
     juce::ComboBox groupBox;
-    std::unique_ptr<ChoiceSwitch> roleSwitch;
+    juce::ComboBox roleBox;
+    // phrase
+    std::unique_ptr<ChoiceSwitch> barsSwitch, chordRateSwitch, arpRateSwitch, fillSwitch;
+    juce::ComboBox voicingBox, arpPatternBox, bassMoveBox;
+    Knob kHumanize;
 
     struct Row
     {
@@ -429,9 +497,9 @@ private:
     std::array<Row, seeder::kNumLayers> rows;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> latchAtt, linkAtt;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> moodAtt, styleAtt, groupAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> moodAtt, styleAtt, groupAtt, roleAtt, voicingAtt, arpPatternAtt, bassMoveAtt;
 
-    juce::Rectangle<int> secTrigger, secStyle, secShape, secLink;
+    juce::Rectangle<int> secTrigger, secStyle, secShape, secLink, secPhrase;
     juce::String infoText { "play a note" };
     bool haveInfo = false;
     uint32_t shownVersion = 0xffffffffu;

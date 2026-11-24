@@ -173,6 +173,14 @@ void testLink()
 
     // a parameter change on one instance reaches the other
     a.set ("mood", 3.0f); a.set ("style", 2.0f); a.set ("complexity", 0.8f); a.set ("seed", 42.0f);
+    const char* optIds[] { "bars", "voicing", "chordRate", "arpPattern", "arpRate", "bassMove", "fill" };
+    const float optVals[] { 0.0f, 3.0f, 1.0f, 3.0f, 2.0f, 3.0f, 2.0f };
+    for (int i = 0; i < 7; ++i) a.set (optIds[i], optVals[i]);
+    a.set ("humanize", 0.4f);
+    a.proc.pollLink(); b.proc.pollLink();
+    for (int i = 0; i < 7; ++i) CHECK ((int) b.get (optIds[i]) == (int) optVals[i], "option %s not synced", optIds[i]);
+    CHECK (std::abs (b.get ("humanize") - 0.4f) < 0.002f, "humanize not synced");
+    a.set ("humanize", 0.0f);
     a.proc.pollLink(); b.proc.pollLink();
     CHECK ((int) b.get ("mood") == 3 && (int) b.get ("style") == 2, "mood/style not synced");
     CHECK (std::abs (b.get ("complexity") - 0.8f) < 0.002f && (int) b.get ("seed") == 42, "complexity/seed not synced");
@@ -181,6 +189,7 @@ void testLink()
     b.proc.pollLink(); a.proc.pollLink();
     CHECK (std::abs (a.get ("density") - 0.25f) < 0.002f, "density not synced back");
 
+    for (int i = 0; i < 7; ++i) solo.set (optIds[i], optVals[i]);
     solo.set ("mood", 3.0f); solo.set ("style", 2.0f); solo.set ("complexity", 0.8f); solo.set ("seed", 42.0f); solo.set ("density", 0.25f);
 
     // key goes only to instance a; b follows through the link
@@ -212,6 +221,8 @@ void testLink()
     CHECK (notesOf (a.events, 1) == soloChords, "instance A (role chords) differs from the single-instance chords");
     CHECK (notesOf (b.events, 1) == soloBass,   "instance B (role bass, channel 1) differs from the single-instance bass");
     for (auto& e : a.events) CHECK (e.ch == 1, "role instance sent on channel %d", e.ch);
+    // a 4-bar phrase with a fill: the pattern must have looped at least once in 3 bars of this run
+    CHECK (a.proc.uiStep.load() < 64, "step %d beyond a 4-bar phrase", a.proc.uiStep.load());
 
     // releasing the key on a stops b as well
     run (1, [] (int, juce::MidiBuffer& m) { noteOff (m, 50); });
@@ -245,7 +256,7 @@ void testMidiExport()
             if (mf.getTrack (t)->getEventPointer (i)->message.isNoteOn()) ++ons;
     CHECK (ons == perLayer[(int) seeder::Layer::Bass], "exported %d bass notes, expected %d", ons, perLayer[(int) seeder::Layer::Bass]);
 
-    CHECK (seeder::writePatternMidi (pat, 0xF, 120.0, file), "export all failed");
+    CHECK (seeder::writePatternMidi (pat, (1 << seeder::kNumLayers) - 1, 120.0, file), "export all failed");
     juce::MidiFile all;
     juce::FileInputStream in2 (file);
     CHECK (in2.openedOk() && all.readFrom (in2) && all.getNumTracks() == seeder::kNumLayers, "expected %d tracks", seeder::kNumLayers);

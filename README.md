@@ -15,15 +15,15 @@ Chords, melody, arp and bass are generated from it. Play another note and everyt
   - *Random*: new material at every trigger.
 - **Change at**: the new root takes over at the next 16th, beat or bar.
 - **Latch**: keep playing after the key is released.
-- **Mood** (Happy, Melancholic, Sad, Dark, Soulful, Jazzy) selects scale, progressions, chord extensions and register.
-- **Style** (House, Deep / Dub House, Techno, Classic House, Garage, Disco, Ambient) selects rhythm templates, bass patterns, arp rate and swing.
+- **Mood** (from sad to bright: Tragic, Dark, Melancholic, Nostalgic, Hypnotic, Jazzy, Dreamy, Soulful, Happy, Euphoric) selects scale, progressions, chord extensions and register.
+- **Style** (House, Classic House, Piano House, Deep / Dub House, Tech House, Afro House, Progressive, Acid House, Techno, Garage, Disco, Ambient) selects rhythm templates, bass patterns, arp rate and swing.
 - **Complexity / Density / Swing / Variation / Seed** shape the result. Variation mutates the melody, arp and bass over loops; 0 = exact loop.
-- **Mute per layer:** every layer (Chords, Melody, Arp, Bass) has an ON/OFF switch and its own MIDI channel (CH 1 to 4).
-- **Drag and drop:** drag the DRAG MIDI box of a layer, or DRAG ALL (four tracks), into a track of your DAW as a .mid file.
-- **Instance link:** several instances share key, seed and settings (shared memory, works across plug-in processes). Give each instance a **Role** (Chords, Melody, Arp, Bass): it plays only that layer, on MIDI channel 1. Groups 1 to 4 separate different sets of instances. Patterns are deterministic, so all instances stay identical.
+- **Mute per layer:** every layer (Chords, Stabs, Pad, Bass, Melody, Counter, Arp) has an ON/OFF switch and its own MIDI channel (CH 1 to 7). Counter is a second line that answers the melody in its gaps.
+- **Drag and drop:** drag the DRAG MIDI box of a layer, or DRAG ALL (seven tracks), into a track of your DAW as a .mid file.
+- **Instance link:** several instances share key, seed and settings (shared memory, works across plug-in processes). Give each instance a **Role** (Chords, Stabs, Pad, Bass, Melody, Counter, Arp): it plays only that layer, on MIDI channel 1. Groups 1 to 4 separate different sets of instances. Patterns are deterministic, so all instances stay identical.
 - **NEW** rolls a new seed, **INIT** resets all controls.
 
-Pattern length: 4 bars (64 sixteenth steps), one chord per bar.
+**Phrase** options: length 4, 8 or 16 bars (8 and 16 bars answer themselves: the second half repeats and varies the first), chord change per bar, half bar or two bars, voicing (auto, close, open, drop 2, spread), arp pattern and rate, bass movement (auto, root, octaves, walking), fill (turnaround in the last bar) and humanize (random timing and velocity).
 
 ## Build
 
@@ -47,4 +47,4 @@ GitHub Actions builds and tests on every push; a tag `vX.Y.Z` creates a release 
 - `Source/PluginProcessor.*`: trigger logic, clock, scheduler, MIDI out
 - `Source/Link.*`: instance link (memory-mapped file, heartbeat, shared parameters, trigger)
 - `Source/MidiExport.h`: .mid export for drag and drop
-- `Source/PluginEditor.*`, `Look.*`, `Knob.h`, `Widgets.h`: UI in the Repetitor style (1100x662, scales with the window)
+- `Source/PluginEditor.*`, `Look.*`, `Knob.h`, `Widgets.h`: UI in the Repetitor style (1100x782, scales with the window)

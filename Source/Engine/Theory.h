@@ -31,7 +31,7 @@ inline uint64_t hashCombine (uint64_t h, uint64_t v)
 }
 
 // 7-note scales as semitone offsets from the root.
-enum class ScaleId { Major, Mixolydian, Dorian, Aeolian, Phrygian, HarmonicMinor, Count };
+enum class ScaleId { Major, Mixolydian, Dorian, Aeolian, Phrygian, HarmonicMinor, Lydian, Count };
 
 inline const std::array<int, 7>& scaleIntervals (ScaleId id)
 {
@@ -42,13 +42,14 @@ inline const std::array<int, 7>& scaleIntervals (ScaleId id)
         { 0, 2, 3, 5, 7, 8, 10 },  // Aeolian (natural minor)
         { 0, 1, 3, 5, 7, 8, 10 },  // Phrygian
         { 0, 2, 3, 5, 7, 8, 11 },  // Harmonic minor
+        { 0, 2, 4, 6, 7, 9, 11 },  // Lydian
     }};
     return t[(std::size_t) id];
 }
 
 inline const char* scaleName (ScaleId id)
 {
-    static const char* n[] { "Major", "Mixolydian", "Dorian", "Minor", "Phrygian", "Harmonic Minor" };
+    static const char* n[] { "Major", "Mixolydian", "Dorian", "Minor", "Phrygian", "Harmonic Minor", "Lydian" };
     return n[(int) id];
 }
 
@@ -61,6 +62,6 @@ inline int degreeToSemitone (ScaleId id, int degree)
     return oct * 12 + iv[(std::size_t) idx];
 }
 
-enum class Layer { Chords = 0, Melody, Arp, Bass, Count };
+enum class Layer { Chords = 0, Stabs, Pad, Bass, Melody, Counter, Arp, Count };
 constexpr int kNumLayers = (int) Layer::Count;
 } // namespace seeder

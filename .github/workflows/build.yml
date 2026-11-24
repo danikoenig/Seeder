@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Engine tests
+        run: |
+          clang++ -std=c++17 -O1 -fsanitize=address,undefined -ISource/Engine \
+            Tests/engine_test.cpp Source/Engine/Generator.cpp -o engine_test
+          ./engine_test
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSEEDER_BUILD_TESTS=ON
+
+      - name: Build plugins
+        run: |
+          cmake --build build --config Release --parallel \
+            --target Seeder_VST3 Seeder_AU SeederInstrument_VST3 SeederInstrument_AU
+
+      - name: Plugin logic tests
+        run: |
+          cmake --build build --config Release --parallel --target SeederProcessorTest
+          ./build/SeederProcessorTest_artefacts/Release/SeederProcessorTest
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp -R "build/Seeder_artefacts/Release/VST3/Seeder.vst3" dist/
+          cp -R "build/Seeder_artefacts/Release/AU/Seeder.component" dist/
+          cp -R "build/SeederInstrument_artefacts/Release/VST3/Seeder Instrument.vst3" dist/
+          cp -R "build/SeederInstrument_artefacts/Release/AU/Seeder Instrument.component" dist/
+          for f in dist/*; do codesign --force --deep -s - "$f"; done
+          cd dist && zip -r -y ../Seeder-macOS-arm64.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Seeder-macOS-arm64
+          path: Seeder-macOS-arm64.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Seeder-macOS-arm64.zip

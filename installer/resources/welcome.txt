@@ -1,0 +1,16 @@
+Seeder - MIDI generator (MIDI effect and instrument)
+by Dani Koenig
+
+Play one note: it becomes the root and plants a seed. Chords, melody, arp and bass
+are generated from it. Play another note and everything changes.
+
+This installs Seeder and Seeder Instrument as:
+- VST3:       /Library/Audio/Plug-Ins/VST3         (Bitwig, Ableton Live, Cubase, Reaper ...)
+- Audio Unit: /Library/Audio/Plug-Ins/Components   (Logic Pro, GarageBand)
+- CLAP:       /Library/Audio/Plug-Ins/CLAP         (Bitwig, Reaper ...)
+
+Requirements: Apple Silicon Mac (M1 or newer), macOS 11 or newer.
+
+---
+
+Installiert Seeder und Seeder Instrument als VST3, Audio Unit (Logic Pro, GarageBand) und CLAP.

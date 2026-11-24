@@ -46,6 +46,12 @@ inline const std::array<int, 7>& scaleIntervals (ScaleId id)
     return t[(std::size_t) id];
 }
 
+inline const char* scaleName (ScaleId id)
+{
+    static const char* n[] { "Major", "Mixolydian", "Dorian", "Minor", "Phrygian", "Harmonic Minor" };
+    return n[(int) id];
+}
+
 // Pitch (semitones above root, may exceed one octave or be negative) of scale degree d.
 inline int degreeToSemitone (ScaleId id, int degree)
 {

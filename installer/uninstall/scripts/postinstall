@@ -1,0 +1,23 @@
+#!/bin/bash
+# Seeder Uninstaller: removes VST3, Audio Unit and CLAP, also from the user folders.
+# Projects and settings are kept.
+NAME="Seeder"
+ID="ch.danikoenig.seeder"
+
+for base in "/Library" /Users/*/Library; do
+  [ -d "$base" ] || continue
+  rm -rf "$base/Audio/Plug-Ins/VST3/$NAME.vst3"
+  rm -rf "$base/Audio/Plug-Ins/Components/$NAME.component"
+  rm -rf "$base/Audio/Plug-Ins/CLAP/$NAME.clap"
+  rm -rf "$base/Audio/Plug-Ins/VST3/$NAME Instrument.vst3"
+  rm -rf "$base/Audio/Plug-Ins/Components/$NAME Instrument.component"
+  rm -rf "$base/Audio/Plug-Ins/CLAP/$NAME Instrument.clap"
+done
+
+pkgutil --forget "$ID.vst3" >/dev/null 2>&1
+pkgutil --forget "$ID.au" >/dev/null 2>&1
+pkgutil --forget "$ID.clap" >/dev/null 2>&1
+
+# let macOS re-read the Audio Unit cache
+killall -9 AudioComponentRegistrar >/dev/null 2>&1
+exit 0

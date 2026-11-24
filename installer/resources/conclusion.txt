@@ -1,0 +1,18 @@
+Done!
+
+Restart your DAW and rescan plugins. Then search for "Seeder" in your plugin list
+and put it before an instrument (Ableton Live: use "Seeder Instrument" on its own
+MIDI track, other tracks take it via "MIDI From").
+Logic Pro: the plugin is under MIDI FX > Audio Units > Dani Koenig.
+
+Several instances? Leave LINK on: they share the key, the seed and the settings.
+Give each instance its own ROLE (Chords, Melody, Arp, Bass).
+
+---
+
+Fertig! Starte deine DAW neu und lass die Plugins neu scannen.
+Mehrere Instanzen: LINK eingeschaltet lassen, sie teilen Taste, Seed und Einstellungen.
+Jeder Instanz eine eigene ROLE geben (Chords, Melody, Arp, Bass).
+Logic Pro: MIDI-FX > Audio Units > Dani Koenig.
+
+https://github.com/danikoenig/Seeder

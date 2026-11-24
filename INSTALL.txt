@@ -1,0 +1,355 @@
+SEEDER - INSTALLATION (macOS)
+by Dani Koenig
+https://github.com/danikoenig/Seeder/releases
+
+English below / Deutsch weiter unten
+
+================================================================
+ENGLISH
+================================================================
+
+REQUIREMENTS
+- A Mac with Apple Silicon (M1, M2, M3, M4 ...).
+  How to check: click the Apple logo (top left) > "About This Mac".
+  Next to "Chip" it must say "Apple M...". Intel Macs are not supported.
+- macOS 11 (Big Sur) or newer.
+- A DAW: any DAW with VST3 (Bitwig, Ableton Live, Cubase, Studio One,
+  Reaper ...) or with Audio Units (Logic Pro, GarageBand).
+  Seeder comes in both formats.
+  Ableton Live: use "Seeder Instrument" (see "How to use").
+
+There are two ways to install. Way A is the easiest.
+
+
+----------------------------------------------------------------
+WAY A - INSTALLER (no Terminal needed)
+----------------------------------------------------------------
+
+1. Download "Seeder-Installer.pkg".
+
+2. Double-click it.
+   macOS will show a message like "Seeder-Installer.pkg Not Opened"
+   or "cannot be opened because Apple cannot check it".
+   This is normal: the plugin is free and not sold through Apple.
+   Click "Done" (or "OK"). Do NOT click "Move to Trash".
+
+3. Allow it once:
+   - Click the Apple logo (top left) > "System Settings".
+   - Click "Privacy & Security" in the left sidebar.
+   - Scroll down to the "Security" section. You'll see:
+     "Seeder-Installer.pkg was blocked ..."
+   - Click "Open Anyway" and enter your Mac password.
+   - Click "Open" if macOS asks again.
+
+4. The installer opens. Click "Continue" and "Install", and enter your
+   Mac password when asked.
+
+5. Restart your DAW and rescan plugins (see "Open your DAW" below).
+
+Done. You only need step 3 once.
+
+
+----------------------------------------------------------------
+WAY B - TERMINAL (if Way A doesn't work)
+----------------------------------------------------------------
+
+STEP 1 - UNZIP
+1. Save the file "Seeder-macOS-arm64.zip" to your
+   "Downloads" folder.
+2. Double-click the ZIP file. A folder appears in Downloads with
+   "Seeder.vst3", "Seeder.component" and this guide inside.
+   (Safari sometimes unzips automatically. Then the folder is already there.)
+   Leave everything in the Downloads folder.
+
+STEP 2 - OPEN TERMINAL
+Terminal is an app that is already on every Mac.
+1. Press Cmd + Space (opens Spotlight search).
+2. Type: Terminal
+3. Press Enter. A window with text opens. That is Terminal.
+
+STEP 3 - COPY THE COMMANDS INTO TERMINAL
+1. Select ALL the lines between the two dashed lines below
+   (from "mkdir" to the end of the "xattr" line).
+2. Copy them with Cmd + C.
+3. Click into the Terminal window.
+4. Paste with Cmd + V.
+5. Press Enter.
+
+------------------------- copy from here -------------------------
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
+for n in "Seeder" "Seeder Instrument"; do
+  cp -R "$(find ~/Downloads -maxdepth 3 -name "$n.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
+  cp -R "$(find ~/Downloads -maxdepth 3 -name "$n.component" -print -quit)" ~/Library/Audio/Plug-Ins/Components/
+done
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/Library/Audio/Plug-Ins/Components/Seeder*.component
+------------------------- copy up to here ------------------------
+
+What the commands do:
+- Line 1 makes sure the plugin folders exist.
+- Line 2 and 3 find "Seeder.vst3" (VST3) and "Seeder.component"
+  (Audio Unit for Logic/GarageBand) in your Downloads and copy them into
+  your plugin folders.
+- Line 4 removes the macOS "downloaded from the internet" block.
+  Without this, macOS will refuse to load the plugin, because it is
+  not sold through Apple.
+
+If macOS asks whether "Terminal" may access your "Downloads" folder,
+click "OK" / "Allow".
+
+If it worked, Terminal shows nothing and is just ready for the next
+input. That is normal. You can close Terminal now.
+
+
+----------------------------------------------------------------
+OPEN YOUR DAW
+----------------------------------------------------------------
+1. Quit your DAW completely and start it again.
+2. Let it rescan the plugins (most DAWs do this automatically).
+   - Bitwig: Settings > Locations > Plug-ins > Rescan
+   - Ableton Live: Settings > Plug-Ins > "Use VST3 Plug-In System
+     Folders" must be ON, then click "Rescan"
+   - Logic Pro: scans automatically on start. You find it under
+     MIDI FX > Audio Units > Dani Koenig > Seeder
+3. Load "Seeder" on an instrument track before the instrument.
+
+Use only ONE of the two ways. If you installed with both, delete the copies in
+your user folder (~/Library/Audio/Plug-Ins/VST3 and ~/Library/Audio/Plug-Ins/
+Components), otherwise the plugin may show up twice.
+
+
+HOW TO USE (SHORT)
+Seeder is a MIDI generator: you play ONE note, it plays chords, melody, arp and bass.
+- Bitwig: put Seeder on an instrument track BEFORE the instrument.
+  Logic Pro: MIDI FX slot > Audio Units > Dani Koenig > Seeder.
+  Ableton Live: load "Seeder Instrument" on MIDI track 1. On MIDI track 2
+  with your synth set "MIDI From" to track 1 > "Seeder Instrument" and
+  Monitor to "In".
+- Press play, then play a key: that key is the root and plants a seed.
+  Another key = new pattern. NOTE MODE: SEED (every key has its own pattern),
+  TRANSPOSE (same pattern, new root), RANDOM (new every time).
+- MOOD and STYLE decide scale, chords, rhythm and bass. SHAPE: complexity, density,
+  swing, variation, seed.
+- Each layer has an ON/OFF switch (mute) and a MIDI channel (CH 1 to 4).
+- Drag the DRAG MIDI box of a layer (or DRAG ALL) into a track of your DAW:
+  you get the pattern as a .mid file.
+- Several instances: leave LINK on. They share key, seed and settings. Give each
+  instance its own ROLE (CHD, MEL, ARP, BAS): it then plays only that layer,
+  on MIDI channel 1, so every layer can sit on its own track with its own synth.
+  GROUP 1 to 4 separates different sets of instances.
+- NEW: new random seed. INIT: all controls back to default.
+- Drag the bottom right corner to resize the window.
+
+
+TROUBLESHOOTING
+- No "Open Anyway" button in Privacy & Security (Way A):
+  Double-click the installer again first, then check System Settings
+  right away. The button only shows for about an hour after the attempt.
+
+- "No such file or directory" (Way B):
+  "Seeder.vst3" is not in your Downloads folder (or the ZIP is not
+  unzipped yet). Unzip it there and paste the commands again.
+
+- The plugin does not show up in the DAW:
+  Restart the DAW and rescan. With Way B, run the 4 commands again.
+
+- Logic Pro does not show Seeder:
+  Logic Pro > Settings > Plug-in Manager. Find "Seeder", tick it
+  and click "Reset & Rescan Selection".
+
+- "Seeder is damaged" or "cannot be opened" (Way B):
+  Line 4 was not run. Paste only this line into Terminal and press Enter:
+
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/Library/Audio/Plug-Ins/Components/Seeder*.component
+
+
+UNINSTALL
+Easiest: download Seeder-Uninstaller.pkg from the release page, double-click it
+and follow the steps. It removes both ways of installing.
+
+By hand:
+Installed with Way A: open Finder, press Cmd + Shift + G, paste
+/Library/Audio/Plug-Ins/VST3 and press Enter. Move "Seeder.vst3" and
+"Seeder Instrument.vst3" to the Trash. Do the same for /Library/Audio/Plug-Ins/Components
+("Seeder.component", "Seeder Instrument.component") and /Library/Audio/Plug-Ins/CLAP.
+
+Installed with Way B: paste these lines into Terminal and press Enter:
+
+mv ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/.Trash/
+mv ~/Library/Audio/Plug-Ins/Components/Seeder*.component ~/.Trash/
+
+
+================================================================
+DEUTSCH
+================================================================
+
+VORAUSSETZUNGEN
+- Ein Mac mit Apple Silicon (M1, M2, M3, M4 ...).
+  So prüfst du das: Klick oben links auf das Apple-Logo > "Über diesen Mac".
+  Bei "Chip" muss "Apple M..." stehen. Intel-Macs werden nicht unterstützt.
+- macOS 11 (Big Sur) oder neuer.
+- Eine DAW: jede DAW mit VST3 (Bitwig, Ableton Live, Cubase, Studio One,
+  Reaper ...) oder mit Audio Units (Logic Pro, GarageBand).
+  Seeder gibt es in beiden Formaten.
+  Ableton Live: nimm "Seeder Instrument" (siehe "Kurz zur Bedienung").
+
+Es gibt zwei Wege. Weg A ist der einfachste.
+
+
+----------------------------------------------------------------
+WEG A - INSTALLER (ohne Terminal)
+----------------------------------------------------------------
+
+1. Lade "Seeder-Installer.pkg" herunter.
+
+2. Doppelklick darauf.
+   macOS zeigt eine Meldung wie "Seeder-Installer.pkg wurde nicht
+   geöffnet" oder "kann nicht geöffnet werden, da Apple es nicht prüfen kann".
+   Das ist normal: Das Plugin ist gratis und wird nicht über Apple vertrieben.
+   Klick auf "Fertig" (oder "OK"). NICHT auf "In den Papierkorb legen".
+
+3. Einmal erlauben:
+   - Klick oben links auf das Apple-Logo > "Systemeinstellungen".
+   - Klick links auf "Datenschutz & Sicherheit".
+   - Scroll runter zum Bereich "Sicherheit". Dort steht:
+     "Seeder-Installer.pkg wurde blockiert ..."
+   - Klick auf "Dennoch öffnen" und gib dein Mac-Passwort ein.
+   - Falls macOS nochmals fragt: "Öffnen" klicken.
+
+4. Der Installer öffnet sich. Klick auf "Fortfahren" und "Installieren"
+   und gib dein Mac-Passwort ein, wenn danach gefragt wird.
+
+5. DAW neu starten und Plugins neu scannen (siehe "DAW öffnen" unten).
+
+Fertig. Schritt 3 brauchst du nur einmal.
+
+
+----------------------------------------------------------------
+WEG B - TERMINAL (falls Weg A nicht klappt)
+----------------------------------------------------------------
+
+SCHRITT 1 - ENTPACKEN
+1. Speichere die Datei "Seeder-macOS-arm64.zip" in deinem
+   Ordner "Downloads".
+2. Doppelklick auf die ZIP-Datei. Im Downloads-Ordner erscheint ein
+   Ordner mit "Seeder.vst3", "Seeder.component" und dieser Anleitung.
+   (Safari entpackt manchmal automatisch. Dann ist der Ordner schon da.)
+   Lass alles im Downloads-Ordner liegen.
+
+SCHRITT 2 - TERMINAL ÖFFNEN
+Terminal ist ein Programm, das auf jedem Mac schon installiert ist.
+1. Drücke Cmd + Leertaste (öffnet die Spotlight-Suche).
+2. Tippe: Terminal
+3. Drücke Enter. Es öffnet sich ein Fenster mit Text. Das ist das Terminal.
+
+SCHRITT 3 - BEFEHLE INS TERMINAL KOPIEREN
+1. Markiere ALLE Zeilen zwischen den beiden gestrichelten Linien
+   unten (von "mkdir" bis zum Ende der Zeile mit "xattr").
+2. Kopiere sie mit Cmd + C.
+3. Klicke ins Terminal-Fenster.
+4. Füge sie mit Cmd + V ein.
+5. Drücke Enter.
+
+------------------------- ab hier kopieren -----------------------
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
+for n in "Seeder" "Seeder Instrument"; do
+  cp -R "$(find ~/Downloads -maxdepth 3 -name "$n.vst3" -print -quit)" ~/Library/Audio/Plug-Ins/VST3/
+  cp -R "$(find ~/Downloads -maxdepth 3 -name "$n.component" -print -quit)" ~/Library/Audio/Plug-Ins/Components/
+done
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/Library/Audio/Plug-Ins/Components/Seeder*.component
+------------------------- bis hier kopieren ----------------------
+
+Was die Befehle machen:
+- Zeile 1 stellt sicher, dass die Plugin-Ordner existieren.
+- Zeile 2 und 3 suchen "Seeder.vst3" (VST3) und "Seeder.component"
+  (Audio Unit für Logic/GarageBand) in deinen Downloads und kopieren sie
+  in deine Plugin-Ordner.
+- Zeile 4 entfernt die macOS-Sperre für Dateien aus dem Internet.
+  Ohne diesen Schritt lädt macOS das Plugin nicht, weil es nicht
+  über Apple vertrieben wird.
+
+Falls macOS fragt, ob "Terminal" auf den Ordner "Downloads" zugreifen
+darf, klick auf "OK" / "Erlauben".
+
+Wenn es geklappt hat, zeigt das Terminal nichts an und wartet einfach
+auf die nächste Eingabe. Das ist normal. Du kannst das Terminal jetzt
+schliessen.
+
+
+----------------------------------------------------------------
+DAW ÖFFNEN
+----------------------------------------------------------------
+1. Beende deine DAW komplett und starte sie neu.
+2. Lass die Plugins neu scannen (die meisten DAWs machen das automatisch).
+   - Bitwig: Settings > Locations > Plug-ins > Rescan
+   - Ableton Live: Einstellungen > Plug-Ins > "VST3-Plug-In-Systemordner
+     verwenden" muss AN sein, dann auf "Neu scannen" klicken
+   - Logic Pro: scannt beim Start automatisch. Du findest es unter
+     MIDI-FX > Audio Units > Dani Koenig > Seeder
+3. Lade "Seeder" auf einer Instrumentenspur vor das Instrument.
+
+Nimm nur EINEN der beiden Wege. Wenn du beide benutzt hast, lösche die Kopien
+in deinem Benutzerordner (~/Library/Audio/Plug-Ins/VST3 und ~/Library/Audio/
+Plug-Ins/Components), sonst erscheint das Plugin eventuell doppelt.
+
+
+KURZ ZUR BEDIENUNG
+Seeder ist ein MIDI-Generator: Du spielst EINE Note, Seeder spielt Akkorde, Melodie, Arp und Bass.
+- Bitwig: Seeder auf einer Instrumentenspur VOR das Instrument legen.
+  Logic Pro: MIDI-FX-Slot > Audio Units > Dani Koenig > Seeder.
+  Ableton Live: "Seeder Instrument" auf MIDI-Spur 1 laden. Auf MIDI-Spur 2
+  mit deinem Synth "MIDI From" auf Spur 1 > "Seeder Instrument" stellen und
+  Monitor auf "In".
+- Play drücken, dann eine Taste spielen: Sie ist die Root und pflanzt einen Seed.
+  Andere Taste = neues Muster. NOTE MODE: SEED (jede Taste hat ihr eigenes Muster),
+  TRANSPOSE (gleiches Muster, neue Root), RANDOM (jedes Mal neu).
+- MOOD und STYLE bestimmen Skala, Akkorde, Rhythmus und Bass. SHAPE: Complexity,
+  Density, Swing, Variation, Seed.
+- Jeder Layer hat einen ON/OFF-Schalter (Mute) und einen MIDI-Kanal (CH 1 bis 4).
+- Die Box DRAG MIDI eines Layers (oder DRAG ALL) in eine Spur der DAW ziehen:
+  Du bekommst das Muster als .mid-Datei.
+- Mehrere Instanzen: LINK eingeschaltet lassen. Sie teilen Taste, Seed und
+  Einstellungen. Jeder Instanz eine eigene ROLE geben (CHD, MEL, ARP, BAS): Sie spielt
+  dann nur diesen Layer auf MIDI-Kanal 1, so kann jeder Layer auf einer eigenen Spur
+  mit eigenem Synth liegen. GROUP 1 bis 4 trennt verschiedene Gruppen.
+- NEW: neuer zufälliger Seed. INIT: alle Regler auf Grundstellung.
+- Unten rechts an der Ecke ziehen = Fenster grösser / kleiner.
+
+
+PROBLEME
+- Kein Button "Dennoch öffnen" unter Datenschutz & Sicherheit (Weg A):
+  Zuerst nochmals Doppelklick auf den Installer, dann sofort in den
+  Systemeinstellungen nachschauen. Der Button erscheint nur etwa eine
+  Stunde lang nach dem Versuch.
+
+- "No such file or directory" (Weg B):
+  "Seeder.vst3" liegt nicht im Downloads-Ordner (oder das ZIP ist
+  noch nicht entpackt). Entpacke es dort und füge die Befehle nochmals ein.
+
+- Das Plugin erscheint nicht in der DAW:
+  DAW neu starten und neu scannen. Bei Weg B die 4 Befehle nochmals ausführen.
+
+- Logic Pro zeigt Seeder nicht an:
+  Logic Pro > Einstellungen > Plug-in-Manager. "Seeder" suchen,
+  anhaken und auf "Zurücksetzen & Auswahl neu prüfen" klicken.
+
+- "Seeder ist beschädigt" oder "kann nicht geöffnet werden" (Weg B):
+  Zeile 4 wurde nicht ausgeführt. Füge nur diese Zeile ins Terminal ein
+  und drück Enter:
+
+  xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/Library/Audio/Plug-Ins/Components/Seeder*.component
+
+
+DEINSTALLIEREN
+Am einfachsten: Seeder-Uninstaller.pkg von der Release-Seite laden, doppelklicken
+und den Schritten folgen. Es entfernt beide Installationswege.
+
+Von Hand:
+Mit Weg A installiert: Finder öffnen, Cmd + Shift + G drücken,
+/Library/Audio/Plug-Ins/VST3 einfügen und Enter drücken. "Seeder.vst3"
+in den Papierkorb legen. Dasselbe für /Library/Audio/Plug-Ins/Components
+und "Seeder.component".
+
+Mit Weg B installiert: Füge diese Zeilen ins Terminal ein und drück Enter:
+
+mv ~/Library/Audio/Plug-Ins/VST3/Seeder*.vst3 ~/.Trash/
+mv ~/Library/Audio/Plug-Ins/Components/Seeder*.component ~/.Trash/

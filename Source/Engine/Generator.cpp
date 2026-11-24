@@ -82,6 +82,8 @@ void generate (const GenParams& p, Pattern& out)
     Rng rngMain (hashCombine (p.seed, 99));
     const ScaleId scale = mood.scales[rngMain.range (0, 1)];
     const int* prog = mood.progressions[rngMain.range (0, 3)];
+    out.scale = (int) scale;
+    for (int b = 0; b < kBars; ++b) out.progression[b] = prog[b];
     const int rootMidi = 48 + p.rootPc;
     const float ext = std::min (1.0f, (mood.extension + p.complexity * 0.5f) * style.extensionMul);
 

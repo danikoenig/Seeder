@@ -1,15 +1,19 @@
-name: Build
+name: Build macOS (Apple Silicon)
 
 on:
   push:
-    branches: [main]
-    tags: ['v*']
+    branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  macos:
-    runs-on: macos-latest
+  build:
+    runs-on: macos-latest   # Apple Silicon runner
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,48 +23,112 @@ jobs:
             Tests/engine_test.cpp Source/Engine/Generator.cpp -o engine_test
           ./engine_test
 
+      - name: Cache JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/juce-src
+          key: juce-src-8.0.4-${{ github.event.repository.name }}-${{ runner.os }}-${{ runner.arch }}
+
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSEEDER_BUILD_TESTS=ON
-
-      - name: Build plugins
         run: |
-          cmake --build build --config Release --parallel \
-            --target Seeder_VST3 Seeder_AU SeederInstrument_VST3 SeederInstrument_AU
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DSEEDER_BUILD_TESTS=ON
 
-      - name: Plugin logic tests
+      - name: Build
+        run: cmake --build build --config Release --target Seeder_VST3 Seeder_AU Seeder_CLAP SeederInstrument_VST3 SeederInstrument_AU SeederInstrument_CLAP -j 4
+
+      - name: Plugin logic tests (trigger, mute, link, MIDI export)
         run: |
-          cmake --build build --config Release --parallel --target SeederProcessorTest
+          cmake --build build --config Release --target SeederProcessorTest -j 4
           ./build/SeederProcessorTest_artefacts/Release/SeederProcessorTest
 
-      - name: Package
+      - name: Validate AU (auval)
+        continue-on-error: true
         run: |
-          mkdir -p dist
-          cp -R "build/Seeder_artefacts/Release/VST3/Seeder.vst3" dist/
-          cp -R "build/Seeder_artefacts/Release/AU/Seeder.component" dist/
-          cp -R "build/SeederInstrument_artefacts/Release/VST3/Seeder Instrument.vst3" dist/
-          cp -R "build/SeederInstrument_artefacts/Release/AU/Seeder Instrument.component" dist/
-          for f in dist/*; do codesign --force --deep -s - "$f"; done
-          cd dist && zip -r -y ../Seeder-macOS-arm64.zip . && cd ..
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/Seeder_artefacts/Release/AU/Seeder.component" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "build/SeederInstrument_artefacts/Release/AU/Seeder Instrument.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 2
+          auval -a | grep -i "Dkng" || true
+          auval -v aumi Sdr1 Dkng | tail -20
+          auval -v aumu Sdr2 Dkng | tail -20
 
-          # Installer (.pkg): VST3 and AU into the system plugin folders
-          VERSION=$(grep -m1 'project(Seeder VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
-          mkdir -p pkgroot/Library/Audio/Plug-Ins/VST3 pkgroot/Library/Audio/Plug-Ins/Components
-          cp -R dist/*.vst3 pkgroot/Library/Audio/Plug-Ins/VST3/
-          cp -R dist/*.component pkgroot/Library/Audio/Plug-Ins/Components/
-          pkgbuild --root pkgroot --identifier ch.danikoenig.seeder --version "$VERSION" \
-            --install-location / "Seeder-$VERSION-macOS.pkg"
+      - name: Sign (ad-hoc) and package
+        run: |
+          ART=build/Seeder_artefacts/Release
+          INST=build/SeederInstrument_artefacts/Release
+          for f in "$ART/VST3/Seeder.vst3" "$ART/AU/Seeder.component" "$ART/CLAP/Seeder.clap" \
+                   "$INST/VST3/Seeder Instrument.vst3" "$INST/AU/Seeder Instrument.component" "$INST/CLAP/Seeder Instrument.clap"; do
+            codesign --force --deep --sign - "$f"
+          done
+          mkdir -p dist "pkg/Seeder"
+          cp -R "$ART/VST3/Seeder.vst3" "$ART/AU/Seeder.component" "$ART/CLAP/Seeder.clap" "pkg/Seeder/"
+          cp -R "$INST/VST3/Seeder Instrument.vst3" "$INST/AU/Seeder Instrument.component" "$INST/CLAP/Seeder Instrument.clap" "pkg/Seeder/"
+          cp INSTALL.txt README.md "pkg/Seeder/"
+          ditto -c -k --keepParent "pkg/Seeder" "dist/Seeder-macOS-arm64.zip"
 
-      - uses: actions/upload-artifact@v4
+      - name: Build installer (.pkg)
+        run: |
+          ART=build/Seeder_artefacts/Release
+          INST=build/SeederInstrument_artefacts/Release
+          VERSION=$(grep -m1 -oE 'project\(Seeder VERSION [0-9.]+' CMakeLists.txt | grep -oE '[0-9.]+$')
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p build/pkg
+
+          build_pkg () {   # name, format-dir, id-suffix, ext
+            local root="pkgroot-$3"
+            mkdir -p "$root"
+            cp -R "$ART/$2/Seeder.$4" "$root/"
+            cp -R "$INST/$2/Seeder Instrument.$4" "$root/"
+            pkgbuild --analyze --root "$root" "build/pkg/component-$3.plist"
+            plutil -replace 0.BundleIsRelocatable -bool NO "build/pkg/component-$3.plist"
+            plutil -replace 1.BundleIsRelocatable -bool NO "build/pkg/component-$3.plist" || true
+            pkgbuild --root "$root" --component-plist "build/pkg/component-$3.plist" \
+              --identifier "ch.danikoenig.seeder.$3" --version "$VERSION" \
+              --install-location "/Library/Audio/Plug-Ins/$1" "build/pkg/Seeder$(echo "$3" | tr a-z A-Z).pkg"
+          }
+          build_pkg VST3       VST3 vst3 vst3
+          build_pkg Components AU   au   component
+          build_pkg CLAP       CLAP clap clap
+
+          sed "s/@VERSION@/$VERSION/g" installer/distribution.xml > build/pkg/distribution.xml
+          productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
+            --package-path build/pkg "dist/Seeder-Installer.pkg"
+          pkgutil --payload-files "dist/Seeder-Installer.pkg" | head -8
+
+      - name: Build uninstaller (.pkg)
+        run: |
+          VERSION=$(grep -m1 -oE 'project\(Seeder VERSION [0-9.]+' CMakeLists.txt | grep -oE '[0-9.]+$')
+          mkdir -p build/unpkg dist
+          chmod +x installer/uninstall/scripts/postinstall
+          pkgbuild --nopayload --scripts installer/uninstall/scripts \
+            --identifier ch.danikoenig.seeder.uninstall --version "$VERSION" build/unpkg/SeederUninstall.pkg
+          sed "s/@VERSION@/$VERSION/g" installer/uninstall/distribution.xml > build/unpkg/distribution.xml
+          productbuild --distribution build/unpkg/distribution.xml --resources installer/uninstall/resources \
+            --package-path build/unpkg "dist/Seeder-Uninstaller.pkg"
+          ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: Seeder-macOS-arm64
           path: |
-            Seeder-*-macOS.pkg
-            Seeder-macOS-arm64.zip
+            dist/*.zip
+            dist/*.pkg
 
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Release (on tag v* or a commit message with [release])
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', env.VERSION) }}
+          name: Seeder ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', env.VERSION) }}
+          target_commitish: ${{ github.sha }}
+          body_path: RELEASE_NOTES.md
+          make_latest: true
           files: |
-            Seeder-*-macOS.pkg
-            Seeder-macOS-arm64.zip
+            dist/*.zip
+            dist/*.pkg

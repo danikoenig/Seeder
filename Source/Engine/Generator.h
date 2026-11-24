@@ -24,6 +24,8 @@ struct Pattern
     std::array<NoteEvent, kMaxEvents> events {};
     int count = 0;
     float suggestedSwing = 0.0f;
+    int scale = 0;                 // ScaleId used for this pattern
+    int progression[kBars] {};     // scale degrees (0 = first) of the four chords
 
     void clear() { count = 0; }
     bool add (int step, int len, int note, int vel, Layer layer);

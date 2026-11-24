@@ -40,15 +40,27 @@ jobs:
           cp -R "build/SeederInstrument_artefacts/Release/VST3/Seeder Instrument.vst3" dist/
           cp -R "build/SeederInstrument_artefacts/Release/AU/Seeder Instrument.component" dist/
           for f in dist/*; do codesign --force --deep -s - "$f"; done
-          cd dist && zip -r -y ../Seeder-macOS-arm64.zip .
+          cd dist && zip -r -y ../Seeder-macOS-arm64.zip . && cd ..
+
+          # Installer (.pkg): VST3 and AU into the system plugin folders
+          VERSION=$(grep -m1 'project(Seeder VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+          mkdir -p pkgroot/Library/Audio/Plug-Ins/VST3 pkgroot/Library/Audio/Plug-Ins/Components
+          cp -R dist/*.vst3 pkgroot/Library/Audio/Plug-Ins/VST3/
+          cp -R dist/*.component pkgroot/Library/Audio/Plug-Ins/Components/
+          pkgbuild --root pkgroot --identifier ch.danikoenig.seeder --version "$VERSION" \
+            --install-location / "Seeder-$VERSION-macOS.pkg"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Seeder-macOS-arm64
-          path: Seeder-macOS-arm64.zip
+          path: |
+            Seeder-*-macOS.pkg
+            Seeder-macOS-arm64.zip
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Seeder-macOS-arm64.zip
+          files: |
+            Seeder-*-macOS.pkg
+            Seeder-macOS-arm64.zip

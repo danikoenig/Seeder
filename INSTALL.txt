@@ -128,12 +128,14 @@ Seeder is a MIDI generator: you play ONE note, it plays chords, melody, arp and 
   Another key = new pattern. NOTE MODE: SEED (every key has its own pattern),
   TRANSPOSE (same pattern, new root), RANDOM (new every time).
 - MOOD and STYLE decide scale, chords, rhythm and bass. SHAPE: complexity, density,
-  swing, variation, seed.
-- Each layer has an ON/OFF switch (mute) and a MIDI channel (CH 1 to 4).
+  swing, variation, seed. PHRASE: length (4/8/16 bars), chord change, voicing, arp pattern
+  and rate, bass movement, fill, humanize.
+- Seven layers: Chords, Stabs, Pad, Bass, Melody, Counter, Arp. Each has an ON/OFF
+  switch (mute) and a MIDI channel (CH 1 to 7).
 - Drag the DRAG MIDI box of a layer (or DRAG ALL) into a track of your DAW:
   you get the pattern as a .mid file.
 - Several instances: leave LINK on. They share key, seed and settings. Give each
-  instance its own ROLE (CHD, MEL, ARP, BAS): it then plays only that layer,
+  instance its own ROLE (any layer): it then plays only that layer,
   on MIDI channel 1, so every layer can sit on its own track with its own synth.
   GROUP 1 to 4 separates different sets of instances.
 - NEW: new random seed. INIT: all controls back to default.
@@ -303,12 +305,14 @@ Seeder ist ein MIDI-Generator: Du spielst EINE Note, Seeder spielt Akkorde, Melo
   Andere Taste = neues Muster. NOTE MODE: SEED (jede Taste hat ihr eigenes Muster),
   TRANSPOSE (gleiches Muster, neue Root), RANDOM (jedes Mal neu).
 - MOOD und STYLE bestimmen Skala, Akkorde, Rhythmus und Bass. SHAPE: Complexity,
-  Density, Swing, Variation, Seed.
-- Jeder Layer hat einen ON/OFF-Schalter (Mute) und einen MIDI-Kanal (CH 1 bis 4).
+  Density, Swing, Variation, Seed. PHRASE: Länge (4/8/16 Takte), Akkordwechsel, Voicing, Arp-Muster
+  und -Tempo, Bass-Bewegung, Fill, Humanize.
+- Sieben Layer: Chords, Stabs, Pad, Bass, Melody, Counter, Arp. Jeder hat einen
+  ON/OFF-Schalter (Mute) und einen MIDI-Kanal (CH 1 bis 7).
 - Die Box DRAG MIDI eines Layers (oder DRAG ALL) in eine Spur der DAW ziehen:
   Du bekommst das Muster als .mid-Datei.
 - Mehrere Instanzen: LINK eingeschaltet lassen. Sie teilen Taste, Seed und
-  Einstellungen. Jeder Instanz eine eigene ROLE geben (CHD, MEL, ARP, BAS): Sie spielt
+  Einstellungen. Jeder Instanz eine eigene ROLE geben (beliebiger Layer): Sie spielt
   dann nur diesen Layer auf MIDI-Kanal 1, so kann jeder Layer auf einer eigenen Spur
   mit eigenem Synth liegen. GROUP 1 bis 4 trennt verschiedene Gruppen.
 - NEW: neuer zufälliger Seed. INIT: alle Regler auf Grundstellung.

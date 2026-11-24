@@ -1,4 +1,4 @@
-## Seeder 0.2.0
+## Seeder 1.0.0
 
 MIDI generator by Dani Koenig. Play one note: it becomes the root and plants a seed. Chords, melody, arp and bass are generated from it. Another note changes everything.
 
